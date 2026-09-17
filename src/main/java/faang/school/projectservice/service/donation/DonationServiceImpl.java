@@ -46,7 +46,7 @@ public class DonationServiceImpl implements DonationService {
 
 
     @Override
-    @Retryable(retryFor = {FeignException.class}, maxAttempts = 3, backoff = @Backoff(delay = 1000, multiplier = 2))
+    @Retryable(retryFor = {FeignException.class}, backoff = @Backoff(delay = 1000, multiplier = 2))
     public DonationDto sendDonation(CreateDonationDto createDonationDto) {
 
         Campaign campaign = campaignRepository.getByIdOrThrow(createDonationDto.campaignId());
@@ -116,7 +116,7 @@ public class DonationServiceImpl implements DonationService {
         return millis + randomInt;
     }
 
-    @Retryable(retryFor = {FeignException.class}, maxAttempts = 3, backoff = @Backoff(delay = 1000, multiplier = 2))
+    @Retryable(retryFor = {FeignException.class}, backoff = @Backoff(delay = 1000, multiplier = 2))
     private void validateUser(long userId) {
         UserDto user = userServiceClient.getUser(userId);
         log.debug("User {} found", userId);

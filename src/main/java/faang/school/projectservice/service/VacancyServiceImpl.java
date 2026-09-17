@@ -19,7 +19,7 @@ import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
-public class VacancyServiceImpl implements VacancyService {
+public class    VacancyServiceImpl implements VacancyService {
     private final VacancyRepository vacancyRepository;
     private final VacancyMapper vacancyMapper;
     private final VacancyValidator vacancyValidation;

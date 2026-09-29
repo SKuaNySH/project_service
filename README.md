@@ -1,107 +1,74 @@
-# Service Template
+# Project Service
 
-Стандартный шаблон проекта на SpringBoot
+Project Service — микросервис CorporationX для управления проектами и связанными с ними сущностями.
 
-# Использованные технологии
+## Технологии
 
-* [Spring Boot](https://spring.io/projects/spring-boot) – как основной фрэймворк
-* [PostgreSQL](https://www.postgresql.org/) – как основная реляционная база данных
-* [Redis](https://redis.io/) – как кэш и очередь сообщений через pub/sub
-* [testcontainers](https://testcontainers.com/) – для изолированного тестирования с базой данных
-* [Liquibase](https://www.liquibase.org/) – для ведения миграций схемы БД
-* [Gradle](https://gradle.org/) – как система сборки приложения
+- Java 17, Spring Boot 3 и Gradle
+- PostgreSQL, Spring Data JPA и Liquibase
+- Redis
+- OpenFeign для взаимодействия с User Service и Payment Service
+- AWS S3 SDK для работы с файлами
+- Springdoc OpenAPI для документации REST API
 
-# База данных
+## Возможности
 
-* База поднимается в отдельном сервисе [infra](../infra)
-* Redis поднимается в единственном инстансе тоже в [infra](../infra)
-* Liquibase сам накатывает нужные миграции на голый PostgreSql при старте приложения
-* В тестах используется [testcontainers](https://testcontainers.com/), в котором тоже запускается отдельный инстанс
-  postgres
-* В коде продемонстрирована работа как с JdbcTemplate, так и с JPA (Hibernate)
+- Создание, просмотр, обновление и фильтрация проектов.
+- Управление вакансиями: создание, получение, обновление и поиск по названию и позиции.
+- Управление стажировками, кампаниями, пожертвованиями, встречами и ресурсами.
+- Проверка прав пользователя для операций с вакансиями.
+- Мягкое удаление кампании.
 
-# Как начать разработку начиная с шаблона?
+## Запуск локально
 
-1. Сначала нужно склонировать этот репозиторий
+Для работы приложения необходимы JDK 17, PostgreSQL и Redis. Для интеграционных функций также нужны доступные User Service, Payment Service и S3-совместимое хранилище. Liquibase применяет миграции базы данных при старте приложения.
 
-```shell
-git clone https://github.com/FAANG-School/ServiceTemplate
+Соберите приложение:
+
+```powershell
+.\gradlew.bat clean bootJar
 ```
 
-2. Далее удаляем служебную директорию для git
+Запустите JAR:
 
-```shell
-# Переходим в корневую директорию проекта
-cd ServiceTemplate
-rm -rf .git
+```powershell
+java -jar build/libs/service.jar
 ```
 
-3. Далее нужно создать совершенно пустой репозиторий в github/gitlab
+По умолчанию приложение работает на порту `8082` с контекстным путём `/api`. Настройки PostgreSQL можно переопределить переменными окружения:
 
-4. Создаём новый репозиторий локально и коммитим изменения
+| Переменная | Значение по умолчанию |
+| --- | --- |
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/postgres` |
+| `SPRING_DATASOURCE_USERNAME` | `user` |
+| `SPRING_DATASOURCE_PASSWORD` | `password` |
 
-```shell
-git init
-git remote add origin <link_to_repo>
-git add .
-git commit -m "<msg>"
+Настройки Redis, S3 и адреса внешних сервисов находятся в `src/main/resources/application.yaml`. Для запуска в Docker укажите адреса, доступные из контейнерной сети.
+
+## Docker
+
+Сначала соберите JAR и затем создайте Docker-образ:
+
+```powershell
+.\gradlew.bat bootJar
+docker build -t project-service .
 ```
 
-Готово, можно начинать работу!
+Образ запускает `build/libs/service.jar` на Eclipse Temurin JDK 17 и предоставляет порт `8082`. Перед запуском контейнера настройте его подключения к PostgreSQL, Redis и необходимым внешним сервисам.
 
-# Как запустить локально?
+## REST API
 
-Сначала нужно развернуть базу данных из директории [infra](../infra)
+Базовый URL: `http://localhost:8082/api`.
 
-Далее собрать gradle проект
+Примеры операций с вакансиями:
 
-```shell
-# Нужно запустить из корневой директории, где лежит build.gradle.kts
-gradle build
-```
+| Метод | Путь | Описание |
+| --- | --- | --- |
+| `POST` | `/api/vacancies` | Создать вакансию |
+| `GET` | `/api/vacancies/{vacancyId}` | Получить вакансию по ID |
+| `PUT` | `/api/vacancies/update/{vacancyId}` | Обновить вакансию |
+| `POST` | `/api/vacancies/filter` | Найти вакансии по названию и/или позиции |
 
-Запустить jar'ник
+Для создания и обновления вакансии передавайте идентификатор пользователя в заголовке `x-user-id`. Для мягкого удаления кампании предусмотрен маршрут `PUT /api/campaigns/{campaignId}/softDelete`.
 
-```shell
-java -jar build/libs/ServiceTemplate-1.0.jar
-```
-
-Но легче всё это делать через IDE
-
-# Код
-
-RESTful приложения калькулятор с единственным endpoint'ом, который принимает 2 числа и выдает результаты их сложения,
-вычитаяни, умножения и деления
-
-* Обычная трёхслойная
-  архитектура – [Controller](src/main/java/faang/school/servicetemplate/controller), [Service](src/main/java/faang/school/servicetemplate/service), [Repository](src/main/java/faang/school/servicetemplate/repository)
-* Слой Repository реализован и на jdbcTemplate, и на JPA (Hibernate)
-* Написан [GlobalExceptionHandler](src/main/java/faang/school/servicetemplate/controller/GlobalExceptionHandler.java)
-  который умеет возвращать ошибки в формате `{"code":"CODE", "message": "message"}`
-* Используется TTL кэширование вычислений
-  в [CalculationTtlCacheService](src/main/java/faang/school/servicetemplate/service/cache/CalculationTtlCacheService.java)
-* Реализован простой Messaging через [Redis pub/sub](https://redis.io/docs/manual/pubsub/)
-  * [Конфигурация](src/main/java/faang/school/servicetemplate/config/RedisConfig.java) –
-    сетапится [RedisTemplate](https://docs.spring.io/spring-data/redis/docs/current/api/org/springframework/data/redis/core/RedisTemplate.html) –
-    класс, для удобной работы с Redis силами Spring
-  * [Отправитель](src/main/java/faang/school/servicetemplate/service/messaging/RedisCalculationPublisher.java) – генерит
-    рандомные запросы и отправляет в очередь
-  * [Получатель](src/main/java/faang/school/servicetemplate/service/messaging/RedisCalculationSubscriber.java) –
-    получает запросы и отправляет задачи асинхронно выполняться
-    в [воркер](src/main/java/faang/school/servicetemplate/service/worker/CalculationWorker.java)
-
-# Тесты
-
-Написаны только для единственного REST endpoint'а
-* SpringBootTest
-* MockMvc
-* Testcontainers
-* AssertJ
-* JUnit5
-* Parameterized tests
-
-# TODO
-
-* Dockerfile, который подключается к сети запущенной postgres в docker-compose
-* Redis connectivity
-* ...
+Swagger UI доступен по адресу `http://localhost:8082/api/swagger-ui/index.html`, спецификация OpenAPI — `http://localhost:8082/api/v3/api-docs`.
